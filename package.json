@@ -1,7 +1,7 @@
 {
   "name": "mushafuk-tercume",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Quran Tərcümə — 24-language Quran translation reader (Capacitor 7)",
   "scripts": {
     "sync": "npx cap sync android",

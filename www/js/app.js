@@ -61,6 +61,16 @@
   function lsSet(k, v) {
     localStorage.setItem("mt." + k, JSON.stringify(v));
   }
+  // Reader/preview text sizes are calc(<base>rem * var(--fs)) in app.css, so one
+  // root variable scales the Arabic, translation, translator line and footnotes.
+  function applyFontScale(v) {
+    let n = Number(v);
+    if (!isFinite(n) || n <= 0) n = 1;
+    n = Math.max(0.8, Math.min(1.8, n));
+    state.font = n;
+    document.documentElement.style.setProperty("--fs", String(n));
+    return n;
+  }
 
   function idbOpen() {
     return new Promise((resolve, reject) => {
@@ -323,7 +333,7 @@
     const pack = state.pack;
     const meta = metaOf(state.activeId) || {};
     const dirTr = meta.dir === "rtl" ? " rtl" : "";
-    let html = `<div class="sr-page" style="font-size:calc(1rem * ${state.font})">`;
+    let html = `<div class="sr-page">`;
     let lastS = 0;
     for (const ref of ayahs) {
       const [ss, aa] = ref.split(":").map(Number);
@@ -671,21 +681,19 @@
         <h2>${t("font")}</h2>
         <div class="font-ctrl">
           <span style="font-size:.8rem;color:var(--mut)">A</span>
-          <input id="selFont" type="range" min="0.85" max="1.45" step="0.05" value="${state.font}">
+          <input id="selFont" type="range" min="0.8" max="1.8" step="0.05" value="${state.font}">
           <span style="font-size:1.15rem;color:var(--mut)">A</span>
         </div>
       </div>
       <h2 style="margin:.2rem 0 .55rem;font-size:.95rem;color:var(--em2)">${t("fontPreview")}</h2>
-      <div class="font-prev" id="fontPrev" style="font-size:calc(1rem * ${state.font})">
+      <div class="font-prev" id="fontPrev">
         <div class="sr-arabic">${ar}</div>
         <div class="sr-tr${dirTr}">${esc(trText)}</div>
         <div class="sr-who">${esc(meta.name || "")}</div>
       </div>
     </div>`;
     const apply = () => {
-      state.font = +$("selFont").value;
-      lsSet("font", state.font);
-      $("fontPrev").style.fontSize = "calc(1rem * " + state.font + ")";
+      lsSet("font", applyFontScale($("selFont").value));
     };
     $("selFont").oninput = apply;
     $("selFont").onchange = apply;
@@ -798,7 +806,7 @@
   async function boot() {
     state.ui = detectUi();
     applyUiDir();
-    state.font = lsGet("font", 1);
+    applyFontScale(lsGet("font", 1));
     state.reciter = lsGet("reciter", "maher");
     state.bookmarks = lsGet("bookmarks", []) || [];
     const [uth, pages, surahs, names] = await Promise.all([

@@ -40,7 +40,7 @@ Keystore və şifrələr bu repoda **yoxdur** və heç vaxt commit olunmamalıd�
 
 ## Current status / TODO
 
-Version on this branch: **1.0.1** (`versionCode` 2). A 1.0.0 signed build was already released as a GitHub test APK; 1.0.1 has not been submitted to any store.
+Version on this branch: **1.0.2** (`versionCode` 3): font-size slider now scales the reader and preview; Arabic uses bundled Amiri Quran (OFL) so U+06DF renders correctly. 1.0.1 (`versionCode` 2) is in store review. A 1.0.0 signed build was already released as a GitHub test APK; 1.0.1 has not been submitted to any store.
 
 ### Done in the working tree (this commit)
 

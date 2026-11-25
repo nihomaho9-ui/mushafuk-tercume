@@ -1,4 +1,6 @@
-@font-face{font-family:UthmanTaha;src:url(../fonts/uthmanic-hafs.woff2) format("woff2");font-display:swap}
+/* Amiri Quran (OFL 1.1, aliftype/amiri 1.002): full Tanzil-Uthmani mark coverage incl. U+06DF small high rounded zero.
+   The previous KFGQPC "HAFS Uthmanic Script" build drew U+06DF as a filled placeholder circle. */
+@font-face{font-family:AmiriQuranApp;src:url(../fonts/AmiriQuran.woff2) format("woff2");font-display:block}
 
 :root{
   --em:#0f4d3a;
@@ -11,7 +13,8 @@
   --ink:#1a1612;
   --mut:#6b6253;
   --line:#e6dfd0;
-  --ar:UthmanTaha,"Noto Naskh Arabic","Amiri",serif;
+  --ar:AmiriQuranApp,"Noto Naskh Arabic",serif;
+  --fs:1; /* reader text scale, set from Settings → Yazı ölçüsü */
   --ui:"Segoe UI","Noto Sans",system-ui,sans-serif;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -105,10 +108,10 @@ button{cursor:pointer}
   content:"";position:absolute;left:18%;right:18%;bottom:0;height:2px;
   background:linear-gradient(90deg,transparent,#e0c48a,transparent);
 }
-.sr-card .sr-arname{font-family:var(--ar);font-size:2.05rem;line-height:1.25;direction:rtl;color:#f6ecd4}
-.sr-card .sr-name{font-size:1.2rem;font-weight:600;margin-top:.1rem}
+.sr-card .sr-arname{font-family:var(--ar);font-size:calc(2.05rem * var(--fs,1));line-height:1.25;direction:rtl;color:#f6ecd4}
+.sr-card .sr-name{font-size:calc(1.2rem * var(--fs,1));font-weight:600;margin-top:.1rem}
 .sr-card .sr-meta{margin-top:.45rem;font-size:.82rem;font-weight:500;color:rgba(255,255,255,.86)}
-.sr-card .sr-bism{font-family:var(--ar);direction:rtl;font-size:1.42rem;line-height:1.7;color:#f3e7d0;margin-top:.7rem}
+.sr-card .sr-bism{font-family:var(--ar);direction:rtl;font-size:calc(1.42rem * var(--fs,1));line-height:1.7;color:#f3e7d0;margin-top:.7rem}
 
 .sr-ayah{background:#fff;border:1px solid var(--line);border-radius:.95rem;margin-bottom:.65rem;overflow:hidden}
 .sr-ayah.playing{border-color:var(--gold);box-shadow:0 0 0 2px rgba(196,165,110,.25)}
@@ -129,11 +132,11 @@ button{cursor:pointer}
 .sr-abar button.on{color:var(--em)}
 .sr-abar svg{width:1.12rem;height:1.12rem;display:block}
 .sr-abody{padding:.7rem .85rem .75rem}
-.sr-arabic{font-family:var(--ar);direction:rtl;text-align:right;font-size:1.55rem;line-height:2.05;color:#1a1612}
-.sr-tr{margin-top:.55rem;font-size:.95rem;line-height:1.55;color:#2a241c}
+.sr-arabic{font-family:var(--ar);direction:rtl;text-align:right;font-size:calc(1.55rem * var(--fs,1));line-height:2.05;color:#1a1612}
+.sr-tr{margin-top:.55rem;font-size:calc(.95rem * var(--fs,1));line-height:1.55;color:#2a241c}
 .sr-tr.rtl{direction:rtl;text-align:right}
-.sr-who{margin-top:.45rem;font-size:.72rem;color:var(--mut);font-weight:500}
-.sr-fn{margin-top:.45rem;font-size:.8rem;line-height:1.45;color:#3d4a43;background:#f3f7f4;border-radius:.6rem;padding:.5rem .65rem;white-space:pre-wrap}
+.sr-who{margin-top:.45rem;font-size:calc(.72rem * var(--fs,1));color:var(--mut);font-weight:500}
+.sr-fn{margin-top:.45rem;font-size:calc(.8rem * var(--fs,1));line-height:1.45;color:#3d4a43;background:#f3f7f4;border-radius:.6rem;padding:.5rem .65rem;white-space:pre-wrap}
 .sr-fn[hidden]{display:none !important}
 
 .pager{
@@ -182,14 +185,14 @@ html[dir=rtl] .lang .who,html[dir=rtl] .sura-row .names,html[dir=rtl] .continue{
   .wrap{padding-left:16px;padding-right:16px}
   .sr-page{padding-left:16px;padding-right:16px}
   .topbar,.pager,.player{padding-left:16px;padding-right:16px}
-  .sr-arabic{font-size:1.85rem;line-height:2.2}
-  .sr-card .sr-arname{font-size:2.35rem}
-  .sr-card .sr-bism{font-size:1.7rem}
+  .sr-arabic{font-size:calc(1.85rem * var(--fs,1));line-height:2.2}
+  .sr-card .sr-arname{font-size:calc(2.35rem * var(--fs,1))}
+  .sr-card .sr-bism{font-size:calc(1.7rem * var(--fs,1))}
   .sura-row .ar{font-size:1.35rem}
 }
 @media (min-width: 900px) {
-  .sr-arabic{font-size:2.05rem;line-height:2.3}
-  .sr-card .sr-arname{font-size:2.55rem}
+  .sr-arabic{font-size:calc(2.05rem * var(--fs,1));line-height:2.3}
+  .sr-card .sr-arname{font-size:calc(2.55rem * var(--fs,1))}
 }
 
 /* polished settings */
