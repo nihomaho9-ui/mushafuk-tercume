@@ -1,0 +1,112 @@
+{
+  "package": "com.nibras.tercume",
+  "versionName": "1.0.1",
+  "versionCode": 2,
+  "default_title": "Quran Tərcümə",
+  "play_title_limit": 30,
+  "privacy_url": "https://mushafuk.online/tercume/privacy.html",
+  "website": "https://mushafuk.online",
+  "contact": "nibrascode@gmail.com",
+  "titles": {
+    "az": {
+      "title": "Quran Tərcümə",
+      "chars": 13
+    },
+    "ru": {
+      "title": "Перевод Корана",
+      "chars": 14
+    },
+    "tr": {
+      "title": "Kuran Meali",
+      "chars": 11
+    },
+    "en": {
+      "title": "Quran Translation",
+      "chars": 17
+    },
+    "uz": {
+      "title": "Qur'on tarjimasi",
+      "chars": 16
+    },
+    "tg": {
+      "title": "Тарҷумаи Қуръон",
+      "chars": 15
+    },
+    "ky": {
+      "title": "Куран котормосу",
+      "chars": 15
+    },
+    "ug": {
+      "title": "قۇرئان تەرجىمىسى",
+      "chars": 16
+    },
+    "ps": {
+      "title": "د قرآن ژباړه",
+      "chars": 12
+    },
+    "ku": {
+      "title": "وەرگێڕانی قورئان",
+      "chars": 16
+    },
+    "hi": {
+      "title": "कुरान अनुवाद",
+      "chars": 12
+    },
+    "ta": {
+      "title": "குர்ஆன் மொழிபெயர்ப்பு",
+      "chars": 21
+    },
+    "fr": {
+      "title": "Traduction du Coran",
+      "chars": 19
+    },
+    "de": {
+      "title": "Koranübersetzung",
+      "chars": 16
+    },
+    "nl": {
+      "title": "Koranvertaling",
+      "chars": 14
+    },
+    "es": {
+      "title": "Traducción del Corán",
+      "chars": 20
+    },
+    "pt": {
+      "title": "Tradução do Alcorão",
+      "chars": 19
+    },
+    "ha": {
+      "title": "Fassarar Alkur'ani",
+      "chars": 18
+    },
+    "so": {
+      "title": "Tarjumada Quraanka",
+      "chars": 18
+    },
+    "ja": {
+      "title": "クルアーン翻訳",
+      "chars": 7
+    },
+    "ur": {
+      "title": "قرآن ترجمہ",
+      "chars": 10
+    },
+    "fa": {
+      "title": "ترجمه قرآن",
+      "chars": 10
+    },
+    "id": {
+      "title": "Terjemahan Al-Qur'an",
+      "chars": 20
+    },
+    "bn": {
+      "title": "কুরআন অনুবাদ",
+      "chars": 12
+    },
+    "zh": {
+      "title": "古兰经翻译",
+      "chars": 5
+    }
+  }
+}

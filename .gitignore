@@ -17,9 +17,9 @@ signing.properties
 credentials.txt
 *.jks
 *.keystore
-android/.gradle/
-android/build/
-android/app/release/
 android/capacitor-cordova-android-plugins/build/
 *.iml
 local.properties
+
+# Signing material must never be committed
+upload_certificate.pem

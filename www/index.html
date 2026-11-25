@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#0f4d3a">
-  <title>Mushafuk Tərcümə</title>
+  <title>Quran Tərcümə</title>
   <link rel="stylesheet" href="css/app.css">
   <link rel="icon" href="icons/icon-192.png">
 </head>
@@ -15,7 +15,7 @@
       <button type="button" class="icon hidden" id="btnBack" aria-label="Back">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <h1 id="title">Mushafuk Tərcümə</h1>
+      <h1 id="title">Quran Tərcümə</h1>
       <button type="button" class="icon" id="btnHome" aria-label="Home">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
       </button>
@@ -24,10 +24,26 @@
       </button>
     </header>
     <main class="screen" id="screen"></main>
+    <div class="player hidden" id="playerBar">
+      <button type="button" class="icon" id="btnPlayerPause" aria-label="Pause">
+        <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+        <svg id="iconPlay" class="hidden" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+      </button>
+      <span class="player-ref" id="playerRef"></span>
+      <button type="button" class="reciter-chip" id="btnReciter"></button>
+    </div>
     <div class="pager hidden" id="pager">
       <button type="button" id="prevPage">‹</button>
       <span class="pg" id="pageLabel"></span>
       <button type="button" id="nextPage">›</button>
+    </div>
+  </div>
+  <div class="sheet hidden" id="reciterSheet">
+    <div class="sheet-bg" id="reciterBackdrop"></div>
+    <div class="sheet-panel" role="dialog" aria-modal="true">
+      <div class="sheet-handle"></div>
+      <h3 id="reciterSheetTitle"></h3>
+      <div id="reciterList"></div>
     </div>
   </div>
   <div id="toast"></div>

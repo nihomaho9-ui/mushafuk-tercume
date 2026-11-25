@@ -1,9 +1,11 @@
-/* Mushafuk Tərcümə — Capacitor reader. Translations are downloaded, not bundled. */
+/* Quran Tərcümə — Capacitor reader. Translations are downloaded, not bundled. */
 (function () {
   "use strict";
 
   const BASE_FALLBACK = "https://mushafuk.online/app-data/v1/";
+  const SITE_URL = "https://mushafuk.online";
   const BISMILLAH = "بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ";
+  const RTL_LANGS = (window.I18N_RTL || ["ur", "fa", "ug", "ps", "ku", "ar"]);
   const RECITERS = [
     { id: "maher", name: "Maher Al Muaiqly", ea: "MaherAlMuaiqly128kbps" },
     { id: "husary", name: "Husary", ea: "Husary_128kbps" },
@@ -16,11 +18,12 @@
 
   const $ = (id) => document.getElementById(id);
   const state = {
-    ui: "az",
+    ui: "en",
     catalog: null,
     uthmani: null,
     pages: null,
     surahs: null,
+    surahNames: null,
     db: null,
     activeId: null,
     pack: null,
@@ -29,7 +32,10 @@
     font: 1,
     reciter: "maher",
     bookmarks: [],
-    audio: null
+    audio: null,
+    playS: null,
+    playA: null,
+    paused: false
   };
 
   const t = (k) => (I18N[state.ui] && I18N[state.ui][k]) || I18N.en[k] || k;
@@ -91,9 +97,7 @@
   async function fetchBuf(url, onProg) {
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) throw new Error("HTTP " + res.status);
-    if (!res.body || !res.body.getReader) {
-      return await res.arrayBuffer();
-    }
+    if (!res.body || !res.body.getReader) return await res.arrayBuffer();
     const total = +res.headers.get("content-length") || 0;
     const reader = res.body.getReader();
     const chunks = [];
@@ -120,31 +124,35 @@
     try {
       const live = await (await fetch(bundled.base + "index.json", { cache: "no-store" })).json();
       if (live && Array.isArray(live.translations) && live.translations.length) {
+        const bundledDefaults = bundled.defaults;
         state.catalog = live;
         if (!state.catalog.base) state.catalog.base = bundled.base;
+        if (!state.catalog.defaults && bundledDefaults) state.catalog.defaults = bundledDefaults;
       }
-    } catch (e) {
-      /* bundled catalog is enough to show the list; download still needs the network */
-    }
+    } catch (e) {}
   }
 
   function detectUi() {
-    const saved = lsGet("ui", null);
-    if (saved && I18N[saved]) return saved;
-    const lang = (navigator.language || "az").slice(0, 2).toLowerCase();
+    const lang = (navigator.language || "en").slice(0, 2).toLowerCase();
     if (I18N[lang]) return lang;
-    return "az";
+    return "en";
   }
   function detectLangId() {
     const code = (navigator.language || "").slice(0, 2).toLowerCase();
-    const hit = (state.catalog.translations || []).find((x) => x.lang === code);
-    return hit ? hit.id : "english_saheeh";
+    return defaultIdForLang(code);
   }
-
+  function setUiLang(lang) {
+    if (lang && I18N[lang]) state.ui = lang;
+    else if (lang && !I18N[lang]) state.ui = "en";
+    lsSet("ui", state.ui);
+    applyUiDir();
+  }
   function applyUiDir() {
-    const rtl = state.ui === "ar";
+    const meta = metaOf(state.activeId);
+    const rtl = (meta && meta.dir === "rtl") || RTL_LANGS.indexOf(state.ui) >= 0;
     document.documentElement.lang = state.ui;
     document.documentElement.dir = rtl ? "rtl" : "ltr";
+    document.title = t("app");
   }
 
   function setTop(title, showBack, showHome) {
@@ -154,13 +162,33 @@
     $("btnSettings").classList.toggle("hidden", state.screen === "picker");
   }
 
-  /* ---------- screens ---------- */
+  function openExternal(url) {
+    try {
+      if (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.Browser) {
+        Capacitor.Plugins.Browser.open({ url: url });
+        return;
+      }
+    } catch (e) {}
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_system";
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    try {
+      window.open(url, "_system");
+    } catch (e2) {
+      window.open(url, "_blank");
+    }
+  }
+
   function renderPicker(opts) {
     state.screen = "picker";
-    $("pager").classList.add("hidden");
+    hideChrome();
     setTop(t("app"), false, false);
     const prefer = (opts && opts.prefer) || detectLangId();
-    const rows = state.catalog.translations
+    const rows = translations()
       .map((tr) => {
         const sel = tr.id === prefer ? " active" : "";
         return `<button type="button" class="lang${sel}" data-id="${tr.id}">
@@ -184,6 +212,7 @@
   async function startDownload(id, statusEl, then) {
     const meta = metaOf(id);
     if (!meta) return;
+    if (meta.lang) setUiLang(meta.lang);
     statusEl.innerHTML = `<p class="okmsg">${t("downloading")} ${esc(meta.lname)} — ${fmtSize(meta.bytes)}</p><div class="progress"><i id="bar"></i></div>`;
     const bar = $("bar");
     try {
@@ -208,18 +237,52 @@
   }
 
   function metaOf(id) {
-    return (state.catalog.translations || []).find((x) => x.id === id);
+    return translations().find((x) => x.id === id);
+  }
+  function translations() {
+    return (state.catalog && state.catalog.translations) || [];
+  }
+  function defaultIdForLang(code) {
+    const d = (state.catalog && state.catalog.defaults) || {};
+    if (code && d[code]) return d[code];
+    const marked = translations().find((x) => x.lang === code && x.default);
+    if (marked) return marked.id;
+    const hit = translations().find((x) => x.lang === code);
+    if (hit) return hit.id;
+    return d.en || (translations()[0] && translations()[0].id) || "english_saheeh";
   }
 
   async function setActive(id, pack) {
     state.activeId = id;
     state.pack = pack || (await idbGet(id));
     lsSet("active", id);
+    const meta = metaOf(id);
+    if (meta && meta.lang) setUiLang(meta.lang);
+    else applyUiDir();
+  }
+
+  function surahLocal(i) {
+    const list = (state.surahNames && (state.surahNames[state.ui] || state.surahNames.en)) || [];
+    const n = list[i - 1];
+    if (n) return n;
+    const s = state.surahs[i - 1];
+    return s ? s.tname || s.ename || s.name : String(i);
+  }
+  function surahName(i) {
+    const s = state.surahs[i - 1];
+    const loc = surahLocal(i);
+    return s ? s.name + " · " + loc : loc;
+  }
+
+  function hideChrome() {
+    $("pager").classList.add("hidden");
+    if (state.playS) showPlayer();
+    else hidePlayer();
   }
 
   function showHome() {
     state.screen = "home";
-    $("pager").classList.add("hidden");
+    hideChrome();
     setTop(t("app"), false, false);
     const last = lsGet("last", null);
     const lastHtml = last
@@ -230,7 +293,7 @@
         const typ = s.type === "Meccan" ? t("meccan") : t("medinan");
         return `<button type="button" class="sura-row" data-page="${s.page}" data-s="${s.i}">
           <span class="n">${s.i}</span>
-          <span class="names"><div class="ar">${s.name}</div><div class="en">${esc(s.ename)} · ${typ}</div></span>
+          <span class="names"><div class="ar">${s.name}</div><div class="en">${esc(surahLocal(s.i))} · ${typ}</div></span>
           <span class="ay">${s.ayas} ${t("ayahs")}</span>
         </button>`;
       })
@@ -244,15 +307,11 @@
     };
   }
 
-  function surahName(i) {
-    const s = state.surahs[i - 1];
-    return s ? s.name + " · " + s.ename : String(i);
-  }
-
   function showReader(page, focusRef) {
     state.screen = "reader";
-    state.page = Math.max(1, Math.min(604, page || 1));
     $("pager").classList.remove("hidden");
+    if (state.playS) showPlayer();
+    state.page = Math.max(1, Math.min(604, page || 1));
     $("prevPage").disabled = state.page <= 1;
     $("nextPage").disabled = state.page >= 604;
     $("pageLabel").textContent = t("page") + " " + state.page + " / 604";
@@ -264,7 +323,6 @@
     const pack = state.pack;
     const meta = metaOf(state.activeId) || {};
     const dirTr = meta.dir === "rtl" ? " rtl" : "";
-    const fontStyle = `--read: ${state.font}`;
     let html = `<div class="sr-page" style="font-size:calc(1rem * ${state.font})">`;
     let lastS = 0;
     for (const ref of ayahs) {
@@ -276,7 +334,7 @@
         const bism = ss !== 1 && ss !== 9 ? `<div class="sr-bism">${BISMILLAH}</div>` : "";
         html += `<section class="sr-card" data-s="${ss}">
           <div class="sr-arname">${su.name}</div>
-          <div class="sr-name">${esc(su.ename)}</div>
+          <div class="sr-name">${esc(surahLocal(ss))}</div>
           <div class="sr-meta">${typ} · ${su.ayas} ${t("ayahs")}</div>
           ${bism}
         </section>`;
@@ -308,6 +366,10 @@
     $("screen").scrollTop = 0;
     lsSet("last", { page: state.page, s: s0, a: +first[1] });
     $("screen").onclick = onAyahClick;
+    if (state.playS) {
+      const el = $("a-" + state.playS + "-" + state.playA);
+      if (el) el.classList.add("playing");
+    }
     if (focusRef) {
       const [s, a] = focusRef.split(":");
       const el = $("a-" + s + "-" + a);
@@ -319,7 +381,12 @@
     bm: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h12v16l-6-3-6 3z"/></svg>',
     play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>',
     copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5h10"/></svg>',
-    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>'
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>',
+    book: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 7H20v13H6.5A2.5 2.5 0 0 0 4 22.5z"/></svg>',
+    type: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M9 4h6l7 16h-3M5 20L12 4l2 4"/><path d="M8.5 14h7"/></svg>',
+    mic: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>',
+    shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l8 4v6c0 5-3.4 7.8-8 9-4.6-1.2-8-4-8-9V7z"/></svg>',
+    web: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>'
   };
 
   function isBookmarked(s, a) {
@@ -335,7 +402,7 @@
     const ar = (state.uthmani[s - 1] && state.uthmani[s - 1][a - 1]) || "";
     const trText = (state.pack.v[s - 1] && state.pack.v[s - 1][a - 1]) || "";
     const who = (metaOf(state.activeId) || {}).name || "";
-    return `${s}:${a}\n${ar}\n${trText}\n— ${who}\nMushafuk Tərcümə`;
+    return `${s}:${a}\n${ar}\n${trText}\n— ${who}\n${t("app")}`;
   }
 
   async function onAyahClick(e) {
@@ -351,10 +418,8 @@
     } else if (act === "copy") {
       try {
         await navigator.clipboard.writeText(verseText(s, a));
-        toast(t("copied"));
-      } catch (err) {
-        toast(t("copied"));
-      }
+      } catch (err) {}
+      toast(t("copied"));
     } else if (act === "share") {
       const text = verseText(s, a);
       try {
@@ -378,46 +443,173 @@
     }
   }
 
+  function reciterMeta() {
+    return RECITERS.find((r) => r.id === state.reciter) || RECITERS[0];
+  }
+  function showPlayer() {
+    const bar = $("playerBar");
+    bar.classList.remove("hidden");
+    $("btnReciter").textContent = reciterMeta().name;
+    if (state.playS) $("playerRef").textContent = state.playS + ":" + state.playA;
+    $("iconPause").classList.toggle("hidden", state.paused);
+    $("iconPlay").classList.toggle("hidden", !state.paused);
+  }
+  function hidePlayer() {
+    $("playerBar").classList.add("hidden");
+    closeSheet();
+  }
+  function stopAudio() {
+    if (state.audio) {
+      state.audio.onended = null;
+      state.audio.pause();
+      state.audio.src = "";
+      state.audio = null;
+    }
+    document.querySelectorAll(".sr-ayah.playing").forEach((el) => el.classList.remove("playing"));
+    state.playS = null;
+    state.playA = null;
+    state.paused = false;
+    hidePlayer();
+  }
   function playAyah(s, a, art) {
     if (!navigator.onLine) {
       toast(t("needNetAudio"));
       return;
     }
-    const rec = RECITERS.find((r) => r.id === state.reciter) || RECITERS[0];
+    const rec = reciterMeta();
     const url = "https://everyayah.com/data/" + rec.ea + "/" + p3(s) + p3(a) + ".mp3";
     if (state.audio) {
+      state.audio.onended = null;
       state.audio.pause();
       state.audio.src = "";
     }
     document.querySelectorAll(".sr-ayah.playing").forEach((el) => el.classList.remove("playing"));
-    if (art) art.classList.add("playing");
+    const el = art || $("a-" + s + "-" + a);
+    if (el) el.classList.add("playing");
     const audio = new Audio(url);
     state.audio = audio;
+    state.playS = s;
+    state.playA = a;
+    state.paused = false;
+    showPlayer();
     audio.play().catch(() => toast(t("needNetAudio")));
     audio.onended = () => {
-      if (art) art.classList.remove("playing");
+      if (el) el.classList.remove("playing");
       const next = a + 1;
       if (next <= ayahCount(s)) {
-        const el = $("a-" + s + "-" + next);
-        if (el) {
-          el.scrollIntoView({ block: "nearest" });
-          playAyah(s, next, el);
-        }
+        const nxt = $("a-" + s + "-" + next);
+        if (nxt) nxt.scrollIntoView({ block: "nearest" });
+        playAyah(s, next, nxt);
+      } else {
+        state.playS = null;
+        state.playA = null;
+        hidePlayer();
       }
     };
   }
+  function togglePause() {
+    if (!state.audio || !state.playS) return;
+    if (state.paused) {
+      state.audio.play().catch(() => toast(t("needNetAudio")));
+      state.paused = false;
+    } else {
+      state.audio.pause();
+      state.paused = true;
+    }
+    showPlayer();
+  }
+  function openSheet() {
+    $("reciterSheetTitle").textContent = t("chooseReciter");
+    $("reciterList").innerHTML = RECITERS.map((r) => {
+      const on = r.id === state.reciter ? " on" : "";
+      return `<button type="button" class="rec-opt${on}" data-id="${r.id}">${esc(r.name)}</button>`;
+    }).join("");
+    $("reciterSheet").classList.remove("hidden");
+  }
+  function closeSheet() {
+    $("reciterSheet").classList.add("hidden");
+  }
+  function pickReciter(id) {
+    if (!RECITERS.some((r) => r.id === id)) return;
+    state.reciter = id;
+    lsSet("reciter", id);
+    closeSheet();
+    showPlayer();
+    if (state.playS) {
+      const s = state.playS,
+        a = state.playA;
+      playAyah(s, a, $("a-" + s + "-" + a));
+    }
+  }
 
-  async function showSettings() {
+  const chev = `<span class="nr-chev">›</span>`;
+  function navRow(id, ico, title, sub) {
+    return `<button type="button" class="nav-row" id="${id}">
+      <span class="nr-ico">${ico}</span>
+      <span class="nr-body"><b>${esc(title)}</b>${sub ? `<small>${esc(sub)}</small>` : ""}</span>
+      ${chev}
+    </button>`;
+  }
+
+  function showSettings() {
     state.screen = "settings";
-    $("pager").classList.add("hidden");
+    hideChrome();
     setTop(t("settings"), true, true);
+    const meta = metaOf(state.activeId) || {};
+    const rec = reciterMeta();
+    const bms = state.bookmarks
+      .slice(0, 30)
+      .map((b) => `<button class="btn" data-act="goto" data-s="${b.s}" data-a="${b.a}" data-page="${b.page}">${b.s}:${b.a}</button>`)
+      .join("");
+    $("screen").innerHTML = `<div class="wrap">
+      <div class="block">
+        <h2>${t("reading")}</h2>
+        ${navRow("btnLangs", icon.book, t("translations"), meta.lname || meta.name || "")}
+        ${navRow("btnFont", icon.type, t("font"), Math.round(state.font * 100) + "%")}
+        ${navRow("btnReciterSet", icon.mic, t("reciter"), rec.name)}
+      </div>
+      <div class="block">
+        <h2>${t("bookmarks")}</h2>
+        <div class="btns" id="bmList">${bms || `<span style="color:var(--mut);font-size:.88rem">${t("noBookmarks")}</span>`}</div>
+      </div>
+      <div class="block">
+        <h2>${t("about")}</h2>
+        ${navRow("btnPrivacy", icon.shield, t("privacyPolicy"), "")}
+        ${navRow("btnSources", icon.book, t("sources"), "")}
+        ${navRow("btnSite", icon.web, t("website"), SITE_URL.replace("https://", ""))}
+        <p style="margin:.7rem 0 0;font-size:.8rem;color:var(--mut)">${t("privacy")}</p>
+      </div>
+    </div>`;
+    $("btnLangs").onclick = showTranslations;
+    $("btnFont").onclick = showFont;
+    $("btnReciterSet").onclick = openSheet;
+    $("btnPrivacy").onclick = showPrivacy;
+    $("btnSources").onclick = showSources;
+    $("btnSite").onclick = () => openExternal(SITE_URL);
+    $("screen").onclick = onSettingsClick;
+  }
+
+  function onSettingsClick(e) {
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    if (b.dataset.act === "goto") showReader(+b.dataset.page, b.dataset.s + ":" + b.dataset.a);
+  }
+
+  async function showTranslations() {
+    state.screen = "translations";
+    hideChrome();
+    setTop(t("translations"), true, true);
     const keys = await idbKeys();
     const have = new Set(keys.map(String));
-    const langs = state.catalog.translations
+    const langs = translations()
       .map((tr) => {
         const on = have.has(tr.id);
         const act = state.activeId === tr.id;
-        const st = act ? `<span class="pill">${t("active")}</span>` : on ? `<span class="pill">${t("onDevice")}</span>` : `<span class="pill" style="color:var(--mut);background:#f0ebe0">${t("notOnDevice")}</span>`;
+        const st = act
+          ? `<span class="pill">${t("active")}</span>`
+          : on
+            ? `<span class="pill">${t("onDevice")}</span>`
+            : `<span class="pill" style="color:var(--mut);background:#f0ebe0">${t("notOnDevice")}</span>`;
         const buttons = [];
         if (!on) buttons.push(`<button class="btn pri" data-act="dl" data-id="${tr.id}">${t("download")} · ${fmtSize(tr.bytes)}</button>`);
         if (on && !act) buttons.push(`<button class="btn pri" data-act="use" data-id="${tr.id}">${t("use")}</button>`);
@@ -428,63 +620,26 @@
         </div>`;
       })
       .join("");
-    const recOpts = RECITERS.map((r) => `<option value="${r.id}"${r.id === state.reciter ? " selected" : ""}>${r.name}</option>`).join("");
-    const uiOpts = ["az", "en", "tr", "ar"].map((c) => `<option value="${c}"${c === state.ui ? " selected" : ""}>${c.toUpperCase()}</option>`).join("");
-    const bms = state.bookmarks
-      .slice(0, 30)
-      .map((b) => `<button class="btn" data-act="goto" data-s="${b.s}" data-a="${b.a}" data-page="${b.page}">${b.s}:${b.a}</button>`)
-      .join("");
     $("screen").innerHTML = `<div class="wrap">
       <div class="block">
-        <h2>${t("uiLang")}</h2>
-        <div class="row"><span class="lbl">${t("uiLang")}</span><select id="selUi">${uiOpts}</select></div>
-        <div class="row"><span class="lbl">${t("reciter")}</span><select id="selRec">${recOpts}</select></div>
-        <div class="row"><span class="lbl">${t("font")}</span><input id="selFont" type="range" min="0.85" max="1.45" step="0.05" value="${state.font}"></div>
-      </div>
-      <div class="block">
-        <h2>${t("languages")}</h2>
         <div id="langOps">${langs}</div>
         <div id="setStatus"></div>
       </div>
-      <div class="block">
-        <h2>${t("bookmarks")}</h2>
-        <div class="btns" id="bmList">${bms || `<span style="color:var(--mut);font-size:.88rem">${t("noBookmarks")}</span>`}</div>
-      </div>
-      <div class="block">
-        <h2>${t("sources")}</h2>
-        <button type="button" class="btn pri" id="btnSources">${t("sources")}</button>
-        <p style="margin:.7rem 0 0;font-size:.8rem;color:var(--mut)">${t("privacy")}</p>
-      </div>
     </div>`;
-    $("selUi").onchange = () => {
-      state.ui = $("selUi").value;
-      lsSet("ui", state.ui);
-      applyUiDir();
-      showSettings();
-    };
-    $("selRec").onchange = () => {
-      state.reciter = $("selRec").value;
-      lsSet("reciter", state.reciter);
-    };
-    $("selFont").oninput = () => {
-      state.font = +$("selFont").value;
-      lsSet("font", state.font);
-    };
-    $("btnSources").onclick = showSources;
-    $("screen").onclick = onSettingsClick;
+    $("screen").onclick = onLangClick;
   }
 
-  async function onSettingsClick(e) {
+  async function onLangClick(e) {
     const b = e.target.closest("button[data-act]");
     if (!b) return;
     const act = b.dataset.act;
     const id = b.dataset.id;
     if (act === "dl") {
-      await startDownload(id, $("setStatus"), () => showSettings());
+      await startDownload(id, $("setStatus"), () => showTranslations());
     } else if (act === "use") {
       await setActive(id);
       toast(t("active"));
-      showSettings();
+      showTranslations();
     } else if (act === "del") {
       if (!confirm(t("confirmDel"))) return;
       await idbDel(id);
@@ -499,17 +654,69 @@
           return;
         }
       }
-      showSettings();
-    } else if (act === "goto") {
-      showReader(+b.dataset.page, b.dataset.s + ":" + b.dataset.a);
+      showTranslations();
     }
+  }
+
+  function showFont() {
+    state.screen = "font";
+    hideChrome();
+    setTop(t("font"), true, true);
+    const ar = (state.uthmani[0] && state.uthmani[0][0]) || BISMILLAH;
+    const trText = (state.pack && state.pack.v[0] && state.pack.v[0][0]) || "";
+    const meta = metaOf(state.activeId) || {};
+    const dirTr = meta.dir === "rtl" ? " rtl" : "";
+    $("screen").innerHTML = `<div class="wrap">
+      <div class="block">
+        <h2>${t("font")}</h2>
+        <div class="font-ctrl">
+          <span style="font-size:.8rem;color:var(--mut)">A</span>
+          <input id="selFont" type="range" min="0.85" max="1.45" step="0.05" value="${state.font}">
+          <span style="font-size:1.15rem;color:var(--mut)">A</span>
+        </div>
+      </div>
+      <h2 style="margin:.2rem 0 .55rem;font-size:.95rem;color:var(--em2)">${t("fontPreview")}</h2>
+      <div class="font-prev" id="fontPrev" style="font-size:calc(1rem * ${state.font})">
+        <div class="sr-arabic">${ar}</div>
+        <div class="sr-tr${dirTr}">${esc(trText)}</div>
+        <div class="sr-who">${esc(meta.name || "")}</div>
+      </div>
+    </div>`;
+    const apply = () => {
+      state.font = +$("selFont").value;
+      lsSet("font", state.font);
+      $("fontPrev").style.fontSize = "calc(1rem * " + state.font + ")";
+    };
+    $("selFont").oninput = apply;
+    $("selFont").onchange = apply;
+  }
+
+  function showPrivacy() {
+    state.screen = "privacy";
+    hideChrome();
+    setTop(t("privacyPolicy"), true, true);
+    $("screen").innerHTML = `<div class="wrap">
+      <div class="block privacy-body">
+        <h2>${t("privacyPolicy")}</h2>
+        <p>${t("privacy1")}</p>
+        <p>${t("privacy2")}</p>
+        <p>${t("privacy3")}</p>
+        <p>${t("privacy4")}</p>
+        <p>${t("privacyContact")}</p>
+        <p><a href="#" id="privSite">${esc(SITE_URL)}</a></p>
+      </div>
+    </div>`;
+    $("privSite").onclick = (e) => {
+      e.preventDefault();
+      openExternal(SITE_URL);
+    };
   }
 
   function showSources() {
     state.screen = "sources";
-    $("pager").classList.add("hidden");
+    hideChrome();
     setTop(t("sources"), true, true);
-    const rows = state.catalog.translations
+    const rows = translations()
       .map((tr) => `<article class="note"><h3>${esc(tr.lname)} — ${esc(tr.name)}</h3><p>${esc(tr.src)}</p><p>${t("size")}: ${fmtSize(tr.bytes)} · v${esc(tr.ver)}</p></article>`)
       .join("");
     $("screen").innerHTML = `<div class="wrap src">
@@ -521,9 +728,14 @@
       <p>Recitation streams from EveryAyah (everyayah.com). Reciters: Maher Al Muaiqly, Husary, Nasser Al Qatami, Yasser Al Dosari, Muhammad Ayyub, Muhammad Jibreel, Saud Ash-Shuraim. These recordings are not covered by the Tanzil mushaf permission. Rights belong to the reciter and the publisher of the files.</p>
       <h3>Font</h3>
       <p>Uthmanic Hafs font: King Fahd Glorious Quran Printing Complex (KFGQPC), Madinah.</p>
-      <h3>Mushafuk</h3>
-      <p>App shell, design and compilation © 2026 Mahir Aliyev / Mushafuk / Nibras. All rights reserved. Quran text, translations and recitations remain under their authors’ and publishers’ rights.</p>
+      <h3>${esc(t("app"))}</h3>
+      <p>App shell, design and compilation © 2026 Mahir Aliyev / Nibras. All rights reserved. Quran text, translations and recitations remain under their authors’ and publishers’ rights.</p>
+      <p><a href="#" id="srcSite">${esc(SITE_URL)}</a></p>
     </div>`;
+    $("srcSite").onclick = (e) => {
+      e.preventDefault();
+      openExternal(SITE_URL);
+    };
   }
 
   function esc(s) {
@@ -534,11 +746,8 @@
       .replace(/"/g, "&quot;");
   }
 
-  /* swipe pages in reader */
   (function swipe() {
-    let x0 = null,
-      y0 = null,
-      t0 = 0;
+    let x0 = null, y0 = null, t0 = 0;
     $("screen").addEventListener(
       "touchstart",
       (e) => {
@@ -551,10 +760,8 @@
     );
     $("screen").addEventListener("touchend", (e) => {
       if (state.screen !== "reader" || x0 == null) return;
-      const t = e.changedTouches[0];
-      const dx = t.clientX - x0,
-        dy = t.clientY - y0,
-        dt = Date.now() - t0;
+      const tch = e.changedTouches[0];
+      const dx = tch.clientX - x0, dy = tch.clientY - y0, dt = Date.now() - t0;
       x0 = null;
       if (dt > 800 || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
       const rtl = document.documentElement.dir === "rtl";
@@ -570,11 +777,23 @@
     if (state.pack || state.screen === "home") showSettings();
   };
   $("btnBack").onclick = () => {
-    if (state.screen === "reader" || state.screen === "sources") showHome();
+    if (!$("reciterSheet").classList.contains("hidden")) {
+      closeSheet();
+      return;
+    }
+    if (state.screen === "reader") showHome();
+    else if (state.screen === "translations" || state.screen === "font" || state.screen === "privacy" || state.screen === "sources") showSettings();
     else if (state.screen === "settings") state.pack ? showHome() : renderPicker();
   };
   $("prevPage").onclick = () => showReader(state.page - 1);
   $("nextPage").onclick = () => showReader(state.page + 1);
+  $("btnPlayerPause").onclick = togglePause;
+  $("btnReciter").onclick = openSheet;
+  $("reciterBackdrop").onclick = closeSheet;
+  $("reciterList").onclick = (e) => {
+    const b = e.target.closest("button[data-id]");
+    if (b) pickReciter(b.dataset.id);
+  };
 
   async function boot() {
     state.ui = detectUi();
@@ -582,14 +801,16 @@
     state.font = lsGet("font", 1);
     state.reciter = lsGet("reciter", "maher");
     state.bookmarks = lsGet("bookmarks", []) || [];
-    const [uth, pages, surahs] = await Promise.all([
+    const [uth, pages, surahs, names] = await Promise.all([
       fetch("data/quran-uthmani.json").then((r) => r.json()),
       fetch("data/pages.json").then((r) => r.json()),
-      fetch("data/surahs.json").then((r) => r.json())
+      fetch("data/surahs.json").then((r) => r.json()),
+      fetch("data/surah-names.json").then((r) => r.json()).catch(() => ({}))
     ]);
     state.uthmani = uth;
     state.pages = pages;
     state.surahs = surahs;
+    state.surahNames = names;
     state.db = await idbOpen();
     await loadCatalog();
     const saved = lsGet("active", null);
