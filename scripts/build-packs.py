@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Build gzip translation packs and index.json for mushafuk.online/app-data/v1/.
-Snapshots bengali_zakaria, indonesian_complex and chinese_makin from QuranEnc."""
+Snapshots packs from local site JSON, Tanzil, or the QuranEnc sura API."""
 from __future__ import annotations
 import gzip, hashlib, json, os, time, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -19,10 +19,10 @@ CATALOG = [
     ("tr", "turkish_shahin", "Ali Özek ve diğerleri", "Türkçe", "ltr", "local", "1.0.0", "QuranEnc.com — Dr. Ali Ozek and others (v1.0.0)"),
     ("en", "english_saheeh", "Saheeh International", "English", "ltr", "local", "1.1.2", "QuranEnc.com — Noor International Center (v1.1.2)"),
     ("uz", "uzbek_mansour", "Алоуддин Мансур", "Oʻzbekcha", "ltr", "local", "1.0.0", "QuranEnc.com — Alaauddin Mansour (v1.0.0)"),
-    ("tg", "tajik_arifi", "Маркази тарҷумаи Равод", "Тоҷикӣ", "ltr", "local", "1.0.2", "QuranEnc.com — Rowwad Translation Center (v1.0.2)"),
+    ("tg", "tajik_khawaja", "Khoja Mirov Khoja Mir", "Тоҷикӣ", "ltr", "fetch", "quranenc", "QuranEnc.com — Tajiki Translation - Khoja Mirov Khoja Mir (not on the public translations list; snapshotted unaltered from the QuranEnc sura API)"),
     ("ky", "kyrgyz_hakimov", "Шамсуддин Хакимов", "Кыргызча", "ltr", "local", "1.0.2", "QuranEnc.com — Shamsuddin Hakimov (v1.0.2)"),
-    ("ug", "uyghur_saleh", "مۇھەممەد سالىھ", "ئۇيغۇرچە", "rtl", "local", "1.0.2", "QuranEnc.com — Muhammad Saleh (v1.0.2)"),
-    ("ps", "pashto_rwwad", "د رواد د ژباړې مرکز", "پښتو", "rtl", "local", "1.0.1", "QuranEnc.com — Rowwad Translation Center (v1.0.1)"),
+    ("ug", "uyghur_mokhtasar", "Al-Mukhtasar", "ئۇيغۇرچە", "rtl", "fetch", "quranenc", "QuranEnc.com — Uyghur Translation of Al-Mukhtasar in Interpreting the Noble Qur’an (tafsir; not on the public translations list; snapshotted unaltered from the QuranEnc sura API)"),
+    ("ps", "pashto_sarfaraz", "Maulawi Janbaz Sarfaraz", "پښتو", "rtl", "fetch", "quranenc", "QuranEnc.com — Pashto Translation - Maulawi Janbaz Sarfaraz (not on the public translations list; snapshotted unaltered from the QuranEnc sura API)"),
     ("ku", "kurdish_bamoki", "محمد صالح بامۆکی", "Kurdî", "rtl", "local", "1.1.1", "QuranEnc.com — Muhammad Salih Bamoki (v1.1.1)"),
     ("hi", "hindi_omari", "अज़ीज़ुल-हक़ उमरी", "हिन्दी", "ltr", "local", "1.1.5", "QuranEnc.com — Azizul Haq Al-Omari (v1.1.5)"),
     ("ta", "tamil_omar", "உமர் ஷரீஃப்", "தமிழ்", "ltr", "local", "1.0.4", "QuranEnc.com — Shaykh Omar Sharif (v1.0.4)"),
@@ -30,15 +30,14 @@ CATALOG = [
     ("de", "german_bubenheim", "Frank Bubenheim, Nadeem Elyas", "Deutsch", "ltr", "local", "1.1.4", "QuranEnc.com — Bubenheim & Elyas (v1.1.4)"),
     ("nl", "dutch_center", "Rowwad Vertaalcentrum", "Nederlands", "ltr", "local", "2.0.10", "QuranEnc.com — Rowwad Vertaalcentrum (v2.0.10)"),
     ("es", "spanish_garcia", "Isa García", "Español", "ltr", "local", "1.0.2", "QuranEnc.com — Muhammad Isa Garcia (v1.0.2)"),
-    ("pt", "portuguese_nasr", "Helmi Nasr", "Português", "ltr", "local", "1.4.1", "QuranEnc.com — Dr. Helmi Nasr (v1.4.1)"),
     ("ha", "hausa_gummi", "Abubakar Mahmoud Gumi", "Hausa", "ltr", "local", "1.2.2", "QuranEnc.com — Abu Bakr Mahmoud Jumi (v1.2.2)"),
     ("so", "somali_yacob", "Cabdullaahi Xasan Yacquub", "Soomaali", "ltr", "local", "1.0.26", "QuranEnc.com — Abdullah Hasan Yaqoub (v1.0.26)"),
     ("ja", "japanese_saeedsato", "サイード佐藤", "日本語", "ltr", "local", "1.0.13", "QuranEnc.com — Saeed Sato (v1.0.13)"),
     ("ur", "urdu_junagarhi", "محمد جوناگڑھی", "اردو", "rtl", "local", "1.1.3", "QuranEnc.com — Muhammad Junagarhi (v1.1.3)"),
     ("fa", "persian_ih", "مرکز ترجمه رواد", "فارسی", "rtl", "local", "1.1.3", "QuranEnc.com — Rowwad Translation Center (v1.1.3)"),
-    ("id", "indonesian_complex", "Kementerian Agama / The Complex", "Bahasa Indonesia", "ltr", "fetch", "1.0.1", "QuranEnc.com — Indonesian Translation — The Complex (v1.0.1); King Fahd Complex edition of the Indonesian Ministry of Religious Affairs text"),
+    ("id", "indonesian_sabiq", "Sabiq", "Bahasa Indonesia", "ltr", "fetch", "1.1.3", "QuranEnc.com — Indonesian Translation - Sabiq Company (v1.1.3); issued by Sabiq Company, developed under the supervision of Rowwad Translation Center"),
     ("bn", "bengali_zakaria", "আবু বকর মুহাম্মাদ যাকারিয়া", "বাংলা", "ltr", "fetch", "1.1.1", "QuranEnc.com — Dr. Abu Bakr Muhammad Zakaria (v1.1.1); King Fahd Complex print, 1436 AH"),
-    ("zh", "chinese_makin", "穆罕默德·马坚 / Muhammad Makin", "中文", "ltr", "fetch", "1.0.2", "QuranEnc.com — Muhammad Makeen / Sheikh Muhammad Makin (v1.0.2); King Fahd Complex edition"),
+    ("zh", "chinese_suliman", "Muhammad Suleiman", "中文", "ltr", "fetch", "1.0.8", "QuranEnc.com — Chinese Translation - Muhammad Suleiman (v1.0.8); translated by Muhammad Makeen, reviewed by Muhammad Sulaiman and other language experts"),
 ]
 
 def get(url):
@@ -124,7 +123,7 @@ def main():
     index = {
         "version": 1,
         "base": "https://mushafuk.online/app-data/v1/",
-        "note": "Gzip packs for Mushafuk Tərcümə. Translations are not bundled in the APK. Arabic Uthmani text is bundled (Tanzil, CC BY 3.0, unaltered).",
+        "note": "Gzip packs for Quran Tərcümə (24 languages). Translations are not bundled in the APK. Arabic Uthmani text is bundled (Tanzil, CC BY 3.0, unaltered).",
         "translations": [],
     }
     for lang, ident, name, lname, direction, kind, ver, src in CATALOG:

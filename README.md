@@ -14,7 +14,7 @@ Bu, **1.0.1** işinin mənbə kodudur. **1.0.0** artıq bu reponun `main` tarlin
 
 Hazır olanlar (kodda var, mağazaya hələ yüklənməyib):
 
-- Ad: Quran Tərcümə, 25 dildə (Portuqal hələ çıxarılmayıb — aşağıya bax)
+- Ad: Quran Tərcümə, **24 dildə** (Portuqal çıxarılıb)
 - Mahirin loqosu: ikonda Quran + rəhal, dillər cədvəli yoxdur; tam şəkil mağaza bannerində
 - Ayarlar: Tərcümələr və yazı ölçüsü ayrı səhifələrdə; ölçü dəyişəndə nümunə ayə canlı görünür
 - Oxunuş zamanı qari dəyişmək (pleyer düyməsi, oxunuş dayanmır)
@@ -24,21 +24,15 @@ Hazır olanlar (kodda var, mağazaya hələ yüklənməyib):
 - `index.json` vasitəsilə dilin default tərcüməsini dəyişmək asandır
 - İlk açılışda kataloq yüklənənə qədər olan çöküş düzəldilib
 
-**Hələ edilməyib (növbəti iş):**
+**Kataloq artıq tətbiq olunub (24 dil):** Sabiq, Al-Mukhtasar, Xəvacə Mirof (Khoja Mirov Khoja Mir), Sərfəraz (Maulawi Janbaz Sarfaraz), Süleyman (Muhammad Suleiman); Portuqal yoxdur. Hər yeni paket 6236 ayədir, QuranEnc-dən dəyişdirilmədən.
 
-1. Tətbiq siyahısını Mahirin qərarına uyğun yeniləmək — **24 dil**:
-   - `indonesian_complex` → `indonesian_sabiq` (Sabiq)
-   - `uyghur_saleh` → `uyghur_mokhtasar` (Al-Mukhtasar təfsiri, ad: Al-Mukhtasar)
-   - `tajik_arifi` (Rəvvad) → `tajik_khawaja` (Xəvacə Mirof)
-   - `pashto_rwwad` → `pashto_sarfaraz` (Sərfəraz)
-   - `chinese_makin` → `chinese_suliman` (Süleyman)
-   - Portuqal dilini tətbiqdən çıxarmaq
-   - Bütün «25» yazılarını «24» etmək
-   - Məlumat QuranEnc-dən dəyişdirilmədən; hər paketdə 6236 ayə olmalıdır
-2. `mushafuk.online/app-data/v1/` üzərinə **yeni** `.json.gz` paketləri əlavə etmək, `index.json`-u yeniləmək. Köhnə paket fayllarını **silmə** — yalnız siyahıdan çıxar.
-3. Saytın tərcümə səhifələri: Mahir istədi ki, eyni dəyişikliklər əvvəl saytda, sonra Mushafuk tətbiqində edilsin. Sayt başqa repodadır: `nihomaho9-ui/mushafuk-online-site`. Bu repoya sayt səhifələri daxil deyil.
-4. Yeni siyahı ilə imzalı 1.0.1 APK/AAB yığmaq.
-5. **Huawei AppGallery və Google Play yükləməsi HOLD-dadır** — siyahı tətbiq olunub, imzalı paket yığılana qədər və təsdiq gələnə qədər yükləmə.
+**Hələ edilməyib:**
+
+1. Yeni paketləri və yenilənmiş `index.json`-u `mushafuk.online/app-data/v1/` ünvanına yükləmək (köhnə `.json.gz` faylları silinmir). Mənbə: `nihomaho9-ui/mushafuk-online-site` / `app-data/v1/`.
+2. Saytın tərcümə səhifələri (t.mushafuk.online siyahıları) və sonra Mushafuk *mushaf* tətbiqi — Mahir bunları da istədi. Bu, başqa repodadır, bu app-ə daxil deyil.
+3. Yeni siyahı ilə imzalı 1.0.1 APK/AAB yığmaq (əgər bu commit-də hələ yoxdursa).
+4. **Huawei AppGallery və Google Play yükləməsi HOLD-dadır** — təsdiq gələnə qədər yükləmə.
+5. Mağaza bannerindəki tam loqoda hələ «25» yazısı var (Mahirin orijinal şəkli). İkon kəsimində rəqəm yoxdur.
 
 Keystore və şifrələr bu repoda **yoxdur** və heç vaxt commit olunmamalıdır.
 
@@ -61,20 +55,21 @@ Version on this branch: **1.0.1** (`versionCode` 2). A 1.0.0 signed build was al
 
 ### TODO before store upload
 
-1. Apply Mahir’s approved **app** catalog (24 languages). See [Approved 1.0.1 catalog](#approved-101-catalog-not-yet-applied-in-this-commit). Fetch unaltered from QuranEnc, update credits and versions, verify **6236** ayahs per pack.
+1. ~~Apply Mahir’s approved **app** catalog (24 languages).~~ **Done in this tree.** See [Approved 1.0.1 catalog](#approved-101-catalog). Fetch unaltered from QuranEnc, update credits and versions, verify **6236** ayahs per pack.
 2. Add the new gzip packs under `mushafuk.online/app-data/v1/`, update `index.json` and the bundled `catalog.json`. **Leave old pack files on the server**; only drop them from the index.
 3. Site reader pages (t.mushafuk.online): Mahir asked for the same catalog changes on the site first, then in the Mushafuk *mushaf* app. That work lives in `nihomaho9-ui/mushafuk-online-site`, not here. Do not delete site files; only change lists.
 4. Drop Portuguese from the picker, `i18n.js`, `values-pt`, store titles, and every “25 languages” string (become 24). Rebuild icons/store copy if wording is baked into a graphic — the **launcher** crop has no language count; the full logo panel still says “25” and may need a new image from Mahir later.
-5. Rebuild the signed 1.0.1 APK and AAB after the catalog change. An earlier 1.0.1 binary exists locally but was built **before** the swaps.
-6. Store upload (AppGallery + Play, for review) stays **on hold** until the catalog is applied and upload is confirmed. Mahir signs into the consoles himself.
+5. Rebuild the signed 1.0.1 APK and AAB after the catalog change (an earlier 1.0.1 binary was built before the swaps).
+6. Store upload (AppGallery + Play, for review) stays **on hold** until upload is confirmed. Mahir signs into the consoles himself.
+7. Site reader lists (t.mushafuk.online) and the Mushafuk mushaf app are a separate follow-up in `mushafuk-online-site` / the Mushafuk app repo.
 
 Privacy HTML for stores: add-only page at `https://mushafuk.online/tercume/privacy.html` (source in the site repo, `tercume/privacy.html`). Confirm it is live before store submission.
 
 ---
 
-## Approved 1.0.1 catalog (not yet applied in this commit)
+## Approved 1.0.1 catalog
 
-Keep every other language as it is today. For the app only:
+Applied in `www/data/catalog.json` and the site `app-data/v1/index.json` (old pack *files* are kept on the server, only dropped from the index):
 
 | Lang | Remove from index (keep the file) | Use instead | Display name |
 |------|-----------------------------------|-------------|--------------|

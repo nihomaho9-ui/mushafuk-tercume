@@ -72,10 +72,6 @@
       "title": "Traducción del Corán",
       "chars": 20
     },
-    "pt": {
-      "title": "Tradução do Alcorão",
-      "chars": 19
-    },
     "ha": {
       "title": "Fassarar Alkur'ani",
       "chars": 18
@@ -108,5 +104,6 @@
       "title": "古兰经翻译",
       "chars": 5
     }
-  }
+  },
+  "language_count": 24
 }
