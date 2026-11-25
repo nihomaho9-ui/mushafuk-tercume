@@ -1,0 +1,17 @@
+{
+  "name": "mushafuk-tercume",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Mushafuk Tərcümə — 25-language Quran translation reader (Capacitor 7)",
+  "scripts": {
+    "sync": "npx cap sync android",
+    "build:android": "npx cap sync android && bash scripts/build-release.sh"
+  },
+  "dependencies": {
+    "@capacitor/android": "7.6.10",
+    "@capacitor/cli": "7.6.10",
+    "@capacitor/core": "7.6.10",
+    "@capacitor/network": "7.0.4",
+    "fflate": "0.8.2"
+  }
+}

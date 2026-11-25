@@ -1,0 +1,20 @@
+{
+  "appId": "com.nibras.tercume",
+  "appName": "Mushafuk Tərcümə",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "adjustMarginsForEdgeToEdge": "disable",
+    "backgroundColor": "#f5f8f7",
+    "webContentsDebuggingEnabled": false
+  },
+  "server": {
+    "androidScheme": "https",
+    "hostname": "tercume.app.local"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}
